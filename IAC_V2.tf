@@ -23,12 +23,25 @@ resource "openstack_networking_network_v2" "internal_terraform" {
   admin_state_up = "true"
 }
 
+# Her we got 4 floatings IPs
+
+resource "openstack_networking_floatingip_v2" "float_1" {
+  pool = "provider"
+  count = 2
+  region = "RegionOne"
+}
+resource "openstack_networking_floatingip_v2" "float_2" {
+  pool = "provider"
+  count = 2
+  region = "RegionOne"
+}
+
 #Here we associate this subnet to the "internal_terraform"-----------------
 
 resource "openstack_networking_subnet_v2" "subnet_1_Terraform" {
   name       = "subnet_1_Terraform"
   network_id = "${openstack_networking_network_v2.internal_terraform.id}"
-  cidr       = "192.168.1.0/24"
+  cidr       = "172.1.2.0/24"
   ip_version = 4
   enable_dhcp = "true"
   depends_on =["openstack_networking_network_v2.internal_terraform"]
@@ -80,13 +93,14 @@ resource "openstack_networking_network_v2" "internal_terraform_2" {
 resource "openstack_networking_subnet_v2" "subnet_2_Terraform" {
   name       = "subnet_2_Terraform"
   network_id = "${openstack_networking_network_v2.internal_terraform_2.id}"
-  cidr       = "10.0.0.0/24"
+  cidr       = "10.20.30.0/24"
   ip_version = 4
   enable_dhcp = "true"
   depends_on=["openstack_networking_network_v2.internal_terraform_2"]
 }
 
 #Here we create an interface associated between router and network-------------------------
+
 resource "openstack_networking_router_interface_v2" "router_interface_2" {
   router_id = "${openstack_networking_router_v2.router_terraform.id}"
   subnet_id = "${openstack_networking_subnet_v2.subnet_2_Terraform.id}"
@@ -94,6 +108,7 @@ resource "openstack_networking_router_interface_v2" "router_interface_2" {
   depends_on =["openstack_networking_router_v2.router_terraform"]
   
 }
+
 resource "openstack_compute_instance_v2"  "DB_Server_" {
 	count = 2
 	name = "DB_Server_${count.index}"
@@ -106,4 +121,21 @@ resource "openstack_compute_instance_v2"  "DB_Server_" {
 		name = "internal_terraform_2"
 	}
 	depends_on =["openstack_networking_subnet_v2.subnet_2_Terraform"]
+}
+
+resource "openstack_compute_floatingip_associate_v2" "fip_1" {
+	region      = "RegionOne"
+	count = 2
+  floating_ip = "${element(openstack_networking_floatingip_v2.float_1.*.address,count.index)}"
+  instance_id = "${element(openstack_compute_instance_v2.Web_Server_.*.id,count.index)}"
+  depends_on=["openstack_compute_instance_v2.Web_Server_"]
+  depends_on=["openstack_networking_floatingip_v2.float_1"]
+}
+resource "openstack_compute_floatingip_associate_v2" "fip_2" {
+	region      = "RegionOne"
+	count = 2
+  floating_ip = "${element(openstack_networking_floatingip_v2.float_2.*.address,count.index)}"
+  instance_id = "${element(openstack_compute_instance_v2.DB_Server_.*.id,count.index)}"
+  depends_on=["openstack_compute_instance_v2.DB_Server_"]
+  depends_on=["openstack_networking_floatingip_v2.float_2"]
 }
