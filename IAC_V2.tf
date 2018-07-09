@@ -12,7 +12,7 @@ provider "openstack" {
 resource "openstack_networking_router_v2" "router_terraform" {
  name                = "router_terraform"
   admin_state_up      = true
-  external_network_id = "bfd56918-cfab-4d06-a5b3-c890f2ac648b"
+  external_network_id = "10be81b3-4705-4a84-871a-c82206940a91"
 }
 
 
